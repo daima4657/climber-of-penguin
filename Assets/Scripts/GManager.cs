@@ -89,7 +89,7 @@ public class GManager : MonoBehaviour
 
     void LateUpdate()
     {
-        //シーンの再読み込み
+        //シーンの再読み込み。
         if (GameResetFlag)
         {
             GameReset();
