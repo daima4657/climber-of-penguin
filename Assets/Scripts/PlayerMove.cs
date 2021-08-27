@@ -6,210 +6,154 @@ public class PlayerMove : MonoBehaviour
 {
     private Rigidbody2D ownRigidbody2D;
     private Player myself;
-    bool push;
-    bool boolLeft;
-    bool boolRight;
+
+
+    private string currenState;
+
+    private float moveTime;//現在時間 ここはTime.deltaTimeが入る
+    private float endTime;
+
+    //ステート管理用
+    private PlayerStateController stateController;
 
     // Start is called before the first frame update
     void Start()
     {
-        ownRigidbody2D = GetComponent<Rigidbody2D>();
+        stateController = GetComponent<PlayerStateController>();
         myself = gameObject.GetComponent<Player>();
+        ownRigidbody2D = GetComponent<Rigidbody2D>();
+        endTime = 0;
     }
 
     // Update is called once per frame
     void Update()
     {
-
-        //ジャンプ処理
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            HoldStart();
-            Jump();
-        }
+        currenState = stateController.StateProcessor.State.getStateName();
+        moveTime += Time.deltaTime;//経過時間を変数に格納
+        
 
         //操作処理
-        if (myself.controlable)
+        if (myself.Controlable)
         {
 
-
-            if (Input.GetKeyUp(KeyCode.Space))
-            {
-                HoldEnd();
-                
-            }
-
-
-            HoverStart();
-
-
-
-                //左キー: -1、右キー: 1
             float x = Input.GetAxisRaw("Horizontal");
-            //対象のスケールに合わせてxの値を調整しておく
-
-            if (!myself.touch || myself.isGrounded)
+            if(x != 0)
             {
-                //左か右を入力したら
-                if (x == 1 || boolRight)
-                {
-                    x = 1 * Mathf.Abs(transform.localScale.x);
-                    // 右キー押下時
-                    HorizontalMove(x);
-                }
-                else if (x == -1 || boolLeft)
-                {
-                    x = -1 * Mathf.Abs(transform.localScale.x);
-                    HorizontalMove(x);
-                }
-                else
-                {
-                    //左も右も入力していなかったら
-                    //横移動の速度を0にしてピタッと止まるようにする
-                    if (myself.walkFlag)
-                    {
-                        ownRigidbody2D.velocity = new Vector2(0, ownRigidbody2D.velocity.y);
-                        HorizontalMoveEnd();
-                    }
-
-                    //Dash→Wait
-                    //anim.SetBool("Dash", false);
-                }
+                int direction = x < 0 ? -1 : 1;
+                //左キー: -1、右キー: 1
+                HorizontalMove(direction);
             }
+            
         }
-
-        //ボタン処理
-
-        if (!this.push)
+        if (myself.walkFlag && (Input.GetKeyUp(KeyCode.RightArrow) || Input.GetKeyUp(KeyCode.LeftArrow)))
         {
-            this.boolRight = false;
-            this.boolLeft = false;
+            HorizontalMoveEnd();
         }
-    }
-
-
-
-    //　ジャンプボタン押下時 
-    public void JumpButtonDown()
-    {
-        HoldStart();
-        Jump();
 
     }
 
-    //　ジャンプボタン離した時
-    public void JumpButtonUp()
+
+
+    void FixedUpdate()
     {
-        HoldEnd();
+        if (myself.walkFlag)
+        {
+            WalkVelocityControl();
+        }
+
     }
 
     // 左移動ボタン離した時
     public void LButtonPushUp()
     {
-        this.push = false;
+        Debug.Log("左移動ボタン離した時");
+        HorizontalMoveEnd();
     }
 
     // 左移動ボタン押下時
     public void LButtonPushDown()
     {
-        this.boolLeft = true;
-        this.push = true;
+        HorizontalMove(-1);
     }
 
     // 右移動ボタン離した時
     public void RButtonPushUp()
     {
-        this.push = false;
+        Debug.Log("右移動ボタン離した時");
+        HorizontalMoveEnd();
     }
 
     // 右移動ボタン押下時
     public void RButtonPushDown()
     {
-        this.boolRight = true;
-        this.push = true;
+        
+        HorizontalMove(1);
     }
+
+
+
+
+
+
+
 
     //水平移動
-    private void HorizontalMove(float x)
+    private void HorizontalMove(int direction)
     {
-        //歩きフラグを立てる
-        if (!myself.walkFlag)
+        myself.Direction = direction;
+
+        if (myself.Controlable)
         {
-            myself.walkFlag = true;
-        }
-        if (myself.controlable)
-        {
-            
-            //入力方向へ移動
-            ownRigidbody2D.velocity = new Vector2(x * myself.speed, ownRigidbody2D.velocity.y);
+            myself.anim.SetBool("walk", true);
+            //歩きフラグを立てる
+            if (!myself.walkFlag)
+            {
+                myself.walkFlag = true;
+            }
             //localScale.xを-1にすると画像が反転する
             Vector2 temp = transform.localScale;
-            temp.x = x;
+            temp.x = myself.Direction*Mathf.Abs(transform.localScale.x);
             transform.localScale = temp;
-            //Wait -> Dash
-            //anim.SetBool("dash", true);
-            if (myself.isGrounded)
+            if (currenState == "Default")
             {
-                myself.stateController.Walk();
+                stateController.Walk();
             }
         }
 
     }
 
-    private void HorizontalMoveEnd()
+    public void HorizontalMoveEnd()
     {
-        myself.walkFlag = false;
-        if (myself.isGrounded)
+        
+        if (myself.walkFlag)
         {
-            //myself.stateController.Default();
-        }
+            myself.walkFlag = false;
             
+            
+        }
+        if (!myself.anim.GetCurrentAnimatorStateInfo(0).IsName("airdash"))
+        {
+            ownRigidbody2D.velocity = new Vector2(0, ownRigidbody2D.velocity.y);
+        }
+        myself.anim.SetBool("walk", false);
+        if (currenState == "Walk")
+        {
+            stateController.Default();
+        }
     }
 
-    public void Jump()
+
+    public void WalkVelocityControl()
     {
-        if (myself.isGrounded && myself.controlable)
+        
+        //入力方向へ移動
+        if (myself.Controlable)
         {
             
-            this.ownRigidbody2D.velocity = Vector3.zero;
-            this.ownRigidbody2D.AddForce(transform.up * myself.jumpForce / 50, ForceMode2D.Impulse);
-            myself.stateController.Jump();
-
-            //StateProcessor.State = PlayerAlive;
+            
+            ownRigidbody2D.velocity = new Vector2(myself.Direction * myself.speed * 0.5f, ownRigidbody2D.velocity.y);
         }
+
     }
 
-    public void HoldStart()
-    {
-        myself.jumpHoldFlag = true;
-    }
-
-    public void HoldEnd()
-    {
-        myself.jumpHoldFlag = false;
-    }
-    public void HoverStart()
-    {
-        if (Input.GetKey(KeyCode.Space) || myself.jumpHoldFlag)
-        {
-            if (ownRigidbody2D.velocity.y < 0.0f && ownRigidbody2D.velocity.y > -2.0f)
-            {
-                myself.stateController.Hover();
-                ownRigidbody2D.velocity = new Vector2(0, 0);
-
-                myself.hoverFlag = true;
-            }
-
-        }
-        else
-        {
-            HoverEnd();
-        }
-    }
-
-    public void HoverEnd()
-    {
-        myself.hoverFlag = false;
-        //myself.stateController.Jump();
-    }
 }

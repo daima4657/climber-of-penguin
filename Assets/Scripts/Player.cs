@@ -21,17 +21,40 @@ public class Player : MonoBehaviour
     private Rigidbody2D ownRigidbody2D;
     //上方向へ加える力
     public float jumpForce = 62.0f;
-    public float speed = 4f; //歩くスピード
+    public float speed = 1f; //歩くスピード
     public LayerMask groundLayer;//Linecastで判定する
     [SerializeField] public bool isGrounded;//着地判定
 
-    [SerializeField] public bool controlable;//操作可能判定
+    [SerializeField] private bool controlable;//操作可能判定
+
+    public bool Controlable
+    {
+        get
+        { return controlable; }
+        set
+        { controlable = value; }
+    }
 
     private BoxCollider2D myCollision;
     public bool walkFlag;//歩き状態
     public bool damagedFlag;//やられ状態
     public bool jumpHoldFlag;//ジャンプ状態
     public bool hoverFlag;//ホバリング状態
+    public bool airDashFlag;//エアダッシュ状態
+
+    private bool canAirDash;
+    public bool CanAirDash {
+        get => canAirDash;
+        set => canAirDash = value;
+    }
+
+    private float direction;
+    public float Direction
+    {
+        get => direction;
+        set => direction = value;
+    }
+
 
     public string CurrenState;
 
@@ -43,7 +66,7 @@ public class Player : MonoBehaviour
     //着地した床オブジェクトを入れる箱
     public GameObject _stampTarget;
 
-    private Animator anim = null;
+    public Animator anim = null;
 
     //ステート管理用
     public PlayerStateController stateController;
@@ -62,13 +85,14 @@ public class Player : MonoBehaviour
         damagedFlag = false;
         myCollision = GetComponent<BoxCollider2D>();
         anim = GetComponent<Animator>();
+        Direction = 1;
     }
 
     // Update is called once per frame
     void Update()
     {
         CurrenState = stateController.StateProcessor.State.getStateName();
-        Debug.Log(stateController.StateProcessor.State.getStateName());
+        //Debug.Log(stateController.StateProcessor.State.getStateName());
         //Debug.Log(transform.position.y);
 
 
@@ -101,18 +125,58 @@ public class Player : MonoBehaviour
         {
             stateController.Dead();
         }
-        else
+        if (anim.GetCurrentAnimatorStateInfo(0).IsName("neautral") || anim.GetCurrentAnimatorStateInfo(0).IsName("walk"))
+        {
+            if (!isGrounded)
+            {
+                stateController.Jump();
+                anim.SetBool("jump", true);
+            }
+        }
+        if (anim.GetCurrentAnimatorStateInfo(0).IsName("jump"))
+        {
+            if (ownRigidbody2D.velocity.y < 0)
+            {
+                anim.SetBool("jump_down", true);
+            } else
+            {
+                anim.SetBool("jump_down", false);
+            }
+        }
+        if (anim.GetCurrentAnimatorStateInfo(0).IsName("jump") || anim.GetCurrentAnimatorStateInfo(0).IsName("hovering"))
         {
             if (isGrounded)
             {
                 stateController.Default();
+                anim.SetBool("jump", false);
+            }
+        }
+        if (anim.GetCurrentAnimatorStateInfo(0).IsName("jumpDown"))
+        {
+            if (isGrounded)
+            {
+                anim.SetBool("jump_down", false);
+            }
+        }
+        if (anim.GetCurrentAnimatorStateInfo(0).IsName("hovering"))
+        {
+            if (!hoverFlag)
+            {
+                anim.SetBool("hover", false);
+            }
+        }
+        else
+        {
+            if (isGrounded)
+            {
+                //stateController.Default();
             }
             if (!isGrounded)
             {
-                if (CurrenState != "Hover")
+                if (CurrenState != "Hover" && CurrenState != "AirDash")
                 {
 
-                    stateController.Jump();
+                    //stateController.Jump();
                 }
                 //
             }
@@ -120,21 +184,17 @@ public class Player : MonoBehaviour
             {
                 if (CurrenState == "Hover")
                 {
-                    stateController.Jump();
+                    //stateController.Jump();
                 }
             }
         }
 
 
-        //アニメーションのコントロール
-        if (CurrenState == "Hover")
+        if (isGrounded && !canAirDash)
         {
-            anim.SetBool("hover", true);
+            canAirDash = true;
         }
-        else
-        {
-            anim.SetBool("hover", false);
-        }
+
 
         //Debug.Log(transform.up);
 
@@ -183,17 +243,13 @@ public class Player : MonoBehaviour
         //落下した場合の処理
         if(transform.position.y < GManager.instance.progress  - 20 || transform.position.y < -10)
         {
-            
-            GManager.instance.GameReset();
-            //GManager.instance.SetProgress(0);
-
+            GManager.instance.DataResetFlag = true;
         }
 
         //最新の標高をGameManagerに記録する
         if(transform.position.y > GManager.instance.progress && transform.position.y - GManager.instance.progress < 5)
         {
-            Debug.Log("プレイヤーのy位置は" + transform.position.y);
-            GManager.instance.SetProgress(GManager.instance.progress + 5);
+            GManager.instance.progressManager.SetProgress(GManager.instance.progress + 5);
         }
 
         
@@ -201,15 +257,17 @@ public class Player : MonoBehaviour
         //やられ
         if (damagedFlag)
         {
+            controlable = false;
+            anim.SetBool("die", true);
             //stateController.Dead();
             ownRigidbody2D.velocity = new Vector2(0, ownRigidbody2D.velocity.y);
             myCollision.enabled = false;
             // x軸を軸にして毎秒2度、回転させるQuaternionを作成（変数をrotとする）
             Quaternion rot = Quaternion.AngleAxis(1, Vector3.forward);
             // 現在の自信の回転の情報を取得する。
-            Quaternion q = this.transform.rotation;
+            Quaternion q = transform.rotation;
             // 合成して、自身に設定
-            this.transform.rotation = q * rot;
+            transform.rotation = q * rot;
         }
 
     }

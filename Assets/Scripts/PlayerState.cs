@@ -48,7 +48,7 @@ namespace PlayerState
     {
         public override string getStateName()
         {
-            return "State:Default";
+            return "Default";
         }
     }
 
@@ -70,7 +70,7 @@ namespace PlayerState
 
         public override void Execute()
         {
-            Debug.Log("“Á•Ê‚Èˆ—‚ª‚ ‚éê‡‚Íq‚ªˆ—‚µ‚Ä‚à‚æ‚¢");
+            //Debug.Log("“Á•Ê‚Èˆ—‚ª‚ ‚éê‡‚Íq‚ªˆ—‚µ‚Ä‚à‚æ‚¢");
             if (execDelegate != null)
             {
                 execDelegate();
@@ -96,5 +96,13 @@ namespace PlayerState
         }
     }
 
+    //AirDash
+    public class PlayerAirDash : PlayerState
+    {
+        public override string getStateName()
+        {
+            return "AirDash";
+        }
+    }
 }
 

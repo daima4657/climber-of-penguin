@@ -18,6 +18,7 @@ public class PlayerStateController : MonoBehaviour
     public PlayerDead StateDead = new PlayerDead();
     public PlayerJump StateJump = new PlayerJump();
     public PlayerHover StateHover = new PlayerHover();
+    public PlayerAirDash StateAirDash = new PlayerAirDash();
 
     // Use this for initialization
     void Start()
@@ -30,6 +31,7 @@ public class PlayerStateController : MonoBehaviour
         StateDead.execDelegate = Dead;
         StateJump.execDelegate = Jump;
         StateHover.execDelegate = Hover;
+        StateAirDash.execDelegate = AirDash;
     }
 
     // Update is called once per frame
@@ -88,5 +90,10 @@ public class PlayerStateController : MonoBehaviour
     public void Hover()
     {
         StateProcessor.State = StateHover;
+    }
+
+    public void AirDash()
+    {
+        StateProcessor.State = StateAirDash;
     }
 }

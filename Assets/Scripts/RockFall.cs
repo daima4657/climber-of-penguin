@@ -14,6 +14,7 @@ public class RockFall : MonoBehaviour
     public GameObject firstRock;
     public GameObject secondRock;
     public bool active;
+    private IEnumerator generateRockCoroutine;
 
     private GManager myself;
 
@@ -22,8 +23,10 @@ public class RockFall : MonoBehaviour
     {
         active = true;
         myself = gameObject.GetComponent<GManager>();
-        
-        StartCoroutine("GenerateRocks");
+
+
+        generateRockCoroutine = GenerateRocks();
+        StartCoroutine(generateRockCoroutine);
     }
 
     // Update is called once per frame
@@ -70,6 +73,13 @@ public class RockFall : MonoBehaviour
     {
         Debug.Log("óéêŒí‚é~");
         active = flag;
+    }
+    public void RestartGenerateRockCoroutine()
+    {
+        StopCoroutine(generateRockCoroutine);
+        generateRockCoroutine = null;
+        generateRockCoroutine = GenerateRocks();
+        StartCoroutine(generateRockCoroutine);
     }
 
 }
